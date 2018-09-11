@@ -50,7 +50,6 @@ _game_envs['retro'] = {
     'SpaceInvaders-Snes',
 }
 
-
 def train(args, extra_args):
     env_type, env_id = get_env_type(args.env)
     print('env_type: {}'.format(env_type))
@@ -120,6 +119,23 @@ def build_env(args):
         env = bench.Monitor(env, logger.get_dir())
         env = retro_wrappers.wrap_deepmind_retro(env)
 
+    elif env_type == 'AirHockey':
+        from gym_airhockey.configuration import configure_env
+        from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
+
+        version_list = [x for x in args.versions if x is not None]
+        version = version_list[MPI.COMM_WORLD.Get_rank()%len(version_list)] # Each rank gets its own version
+        
+        # setup the environment
+        env = gym.make(env_id)
+        env.seed(args.seed)
+        configure_env(env, version=version)
+
+        # wrap the environment
+        env = bench.Monitor(env, logger.get_dir(), allow_early_resets=True)
+        env = DummyVecEnv([lambda: env])
+        env.render()
+
     else: 
        get_session(tf.ConfigProto(allow_soft_placement=True,
                                    intra_op_parallelism_threads=1,
@@ -137,6 +153,8 @@ def get_env_type(env_id):
     if env_id in _game_envs.keys():
         env_type = env_id
         env_id = [g for g in _game_envs[env_type]][0]
+    if 'AirHockey' in env_id:
+        env_type = 'AirHockey'
     else:
         env_type = None
         for g, e in _game_envs.items():
@@ -176,7 +194,7 @@ def get_learn_function(alg):
 def get_learn_function_defaults(alg, env_type):
     try:
         alg_defaults = get_alg_module(alg, 'defaults')
-        kwargs = getattr(alg_defaults, env_type)()
+        kwargs = getattr(alg_defaults, env_type.lower())()
     except (ImportError, AttributeError):
         kwargs = {}
     return kwargs
