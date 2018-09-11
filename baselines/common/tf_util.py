@@ -346,6 +346,11 @@ def load_variables(load_path, variables=None, sess=None):
     sess = sess or get_session()
     variables = variables or tf.trainable_variables()
 
+    if not os.path.exists(load_path):
+        print("No model existing at given path %s"%load_path)
+        print("LOADING ABORTED...")
+        return
+
     loaded_params = joblib.load(os.path.expanduser(load_path))
     restores = []   
     if isinstance(loaded_params, list):

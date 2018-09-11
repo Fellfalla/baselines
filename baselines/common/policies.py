@@ -1,9 +1,10 @@
+import functools
 import tensorflow as tf
 from baselines.common import tf_util
 from baselines.a2c.utils import fc
 from baselines.common.distributions import make_pdtype
 from baselines.common.input import observation_placeholder, encode_observation
-from baselines.common.tf_util import adjust_shape
+from baselines.common.tf_util import adjust_shape, get_session, save_variables, load_variables
 from baselines.common.mpi_running_mean_std import RunningMeanStd
 from baselines.common.models import get_network_builder
 
@@ -49,7 +50,11 @@ class PolicyWithValue(object):
 
         self.action = self.pd.sample()
         self.neglogp = self.pd.neglogp(self.action)
+        sess = get_session()
         self.sess = sess
+
+        self.save = functools.partial(save_variables, sess=sess)
+        self.load = functools.partial(load_variables, sess=sess)
 
         if estimate_q:
             assert isinstance(env.action_space, gym.spaces.Discrete)
@@ -107,12 +112,6 @@ class PolicyWithValue(object):
         value estimate
         """
         return self._evaluate(self.vf, ob, *args, **kwargs)      
-
-    def save(self, save_path):
-        tf_util.save_state(save_path, sess=self.sess)
-
-    def load(self, load_path):
-        tf_util.load_state(load_path, sess=self.sess)
   
 def build_policy(env, policy_network, value_network=None,  normalize_observations=False, estimate_q=False, **policy_kwargs):
     if isinstance(policy_network, str):

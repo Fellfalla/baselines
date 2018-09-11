@@ -27,11 +27,11 @@ def atari():
 
 def airhockey():
     return dict(
-        nsteps=2048,
-        nminibatches=256,
+        nsteps=1024,
+        nminibatches=4,
         lam=0.5**(1./8),
         gamma=0.5**(1./16), # half value after 16 steps
-        noptepochs=10,
+        noptepochs=4,
         log_interval=1,
         ent_coef=0.0,
         lr=lambda f: 7e-4 * f,

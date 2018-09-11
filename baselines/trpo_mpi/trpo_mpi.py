@@ -99,6 +99,8 @@ def learn(*,
         max_episodes=0, max_iters=0,  # time constraint
         callback=None,
         load_path=None,
+        save_path=None,
+        save_interval=0,
         **network_kwargs
         ):
     '''
@@ -244,6 +246,7 @@ def learn(*,
 
     U.initialize()
     if load_path is not None:
+        print('Loading from ', load_path)
         pi.load(load_path)
     
     th_init = get_flat()
@@ -350,6 +353,16 @@ def learn(*,
                     g = allmean(compute_vflossandgrad(mbob, mbret))
                     vfadam.update(g, vf_stepsize)
 
+
+        if save_interval and (iters_so_far % save_interval == 0) and logger.get_dir() and MPI.COMM_WORLD.Get_rank() == 0:
+            if save_path is None:
+                checkdir = osp.join(logger.get_dir(), 'checkpoints')
+                os.makedirs(checkdir, exist_ok=True)
+                save_path = osp.join(checkdir, '%.5i'%update)
+            
+            print('Saving to', save_path)
+            pi.save(save_path)
+
         logger.record_tabular("ev_tdlam_before", explained_variance(vpredbefore, tdlamret))
 
         lrlocal = (seg["ep_lens"], seg["ep_rets"]) # local values
@@ -368,6 +381,7 @@ def learn(*,
         logger.record_tabular("EpisodesSoFar", episodes_so_far)
         logger.record_tabular("TimestepsSoFar", timesteps_so_far)
         logger.record_tabular("TimeElapsed", time.time() - tstart)
+
 
         if rank==0:
             logger.dump_tabular()
